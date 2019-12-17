@@ -5,25 +5,30 @@ import okhttp3.logging.HttpLoggingInterceptor
 import okio.ByteString
 import java.util.concurrent.TimeUnit
 
-class SuperSocket() {
+open class SuperSocket() {
     private lateinit var httpClient: OkHttpClient
     private lateinit var baseUrl: String
     private lateinit var coreSocket: WebSocket
-    private var state: SocketState = SocketState.CLOSED
+    private var state: SocketState = SocketState.START
 
     constructor(url: String) : this() {
         baseUrl = url
-        initSocket()
     }
 
-    private fun initSocket() {
-        httpClient = OkHttpClient.Builder()
+    open fun getHttpClientBuilder(): OkHttpClient.Builder =
+        OkHttpClient.Builder()
             .pingInterval(3, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
             .addInterceptor(HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
+                if (BuildConfig.DEBUG)
+                    level = HttpLoggingInterceptor.Level.BODY
             })
-            .build()
+
+    fun init() {
+        if (state == SocketState.START) {
+            httpClient = getHttpClientBuilder().build()
+            state = SocketState.CLOSED
+        }
     }
 
     fun connect(listener: SocketListener?) {
@@ -75,6 +80,7 @@ class SuperSocket() {
     }
 
     fun close() {
+        state = SocketState.CLOSED
         httpClient.dispatcher.cancelAll()
         coreSocket.close(1000, "Normal")
     }

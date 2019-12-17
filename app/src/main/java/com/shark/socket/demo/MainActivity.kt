@@ -1,43 +1,35 @@
 package com.shark.socket.demo
 
-import android.database.Observable
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.text.TextUtils
 import android.util.Log
-import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
-import androidx.lifecycle.Lifecycle
+import androidx.appcompat.app.AppCompatActivity
 import com.shark.socket.SocketListener
-import com.shark.socket.SuperSocket
-import com.uber.autodispose.android.lifecycle.AndroidLifecycleScopeProvider
-import com.uber.autodispose.autoDispose
-import io.reactivex.Observer
-import io.reactivex.android.plugins.RxAndroidPlugins
-import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.disposables.Disposable
-import io.reactivex.internal.operators.observable.ObservableTimer
 import kotlinx.android.synthetic.main.activity_main.*
-import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
-    lateinit var superSocket: SuperSocket
+    lateinit var superSocket: CustomerSocket
     lateinit var connectButton: Button
     lateinit var closeButton: Button
     lateinit var sendButton: Button
     lateinit var inputText: EditText
+    lateinit var idText: EditText
     lateinit var tv: TextView
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        superSocket = SuperSocket(BuildConfig.SOCKET_URL)
+        superSocket = CustomerSocket(
+            BuildConfig.SOCKET_URL,
+            HashMap<String, String>().apply { put("token", "stopworld") }).apply { init() }
 
         connectButton = button
         closeButton = button2
         sendButton = button3
         inputText = editText
+        idText = editText2
         tv = textView
 
         connectButton.setOnClickListener {
@@ -48,28 +40,16 @@ class MainActivity : AppCompatActivity() {
         }
         sendButton.setOnClickListener {
             if (!TextUtils.isEmpty(inputText.text.toString())) {
-                tv.append(inputText.text.toString()+"\n")
-                superSocket.send(inputText.text.toString())
+                tv.append(inputText.text.toString() + "\n")
+                superSocket.send(
+                    "{" +
+                            "  \"receiveId\": \"${idText.text}\"," +
+                            "  \"msg\": \"${inputText.text}\"" +
+                            "}"
+                )
                 inputText.setText("")
             }
         }
-//        ObservableTimer.interval(3, TimeUnit.SECONDS)
-//            .observeOn(AndroidSchedulers.mainThread())
-//            .autoDispose(AndroidLifecycleScopeProvider.from(this, Lifecycle.Event.ON_DESTROY))
-//            .subscribe(object : Observer<Long> {
-//                override fun onNext(t: Long) {
-////                    superSocket.send("Heart Heat:${t}")
-//                }
-//
-//                override fun onComplete() {
-//                }
-//
-//                override fun onSubscribe(d: Disposable) {
-//                }
-//
-//                override fun onError(e: Throwable) {
-//                }
-//            })
     }
 
     private fun connect() {
@@ -84,11 +64,11 @@ class MainActivity : AppCompatActivity() {
 
             override fun onMessage(text: String) {
                 Log.e("Shark", "onMessage:${text}")
-                runOnUiThread { tv.append(text+"\n") }
+                runOnUiThread { tv.append(text + "\n") }
             }
 
             override fun onOpen(response: okhttp3.Response) {
-                Log.e("Shark", "onOpen:${response.code}")
+                Log.e("Shark", "onOpen:${response}")
                 runOnUiThread { tv.append("Connect Success:${response.code}\n") }
             }
 
@@ -96,7 +76,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onFailure(t: Throwable, response: okhttp3.Response?) {
-                Log.e("Shark", "onFailure:${t.message}")
+                Log.e("Shark", "onFailure:${response}")
                 runOnUiThread { tv.append("Error:${t.message}\n") }
             }
         })
