@@ -31,8 +31,10 @@ open class SuperSocket() {
         }
     }
 
+    @Synchronized
     fun connect(listener: SocketListener?) {
-        if (state == SocketState.CONNECTED) return
+        if (state == SocketState.CONNECTED || state == SocketState.CONNECTING) return
+        state = SocketState.CONNECTING
         httpClient.newWebSocket(Request.Builder().url(baseUrl).build(),
             object : WebSocketListener() {
                 override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
